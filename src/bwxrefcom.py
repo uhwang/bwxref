@@ -11,7 +11,7 @@ message_type = ('normal', 'warning', 'error')
 
 message_normal = 0
 message_warning= 1
-message_error  = 1
+message_error  = 2
 
 message_type_icon = {
     message_type[message_normal ]: QMessageBox.Information, 
