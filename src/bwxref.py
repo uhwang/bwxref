@@ -4,6 +4,7 @@
     2/2/21  Ver 0.1
     2/4/21  Multiple Korean Bible DB
             Added BibleWorks Export 
+    2/11/21 WTT Mapping
 
 '''
 import re
@@ -12,28 +13,33 @@ import sqlite3 as db
 import clipboard
 import HTML 
 import bwxreflib
+import bwxrefwtt
 import bwxrefcom
 import wttmap as wmap
  
 write_format = ['Txt', 'Docx', 'Html']
 
-# Isa 66:5 
-# Eze 16:52-56
+# Isa 66:5 dddd
+# Eze 16:52-56 ddd
+# Gen. 1:2,3,4f,5ff ddd
 
 #_nkr_db_table_name = "Bible"
 _xref_kbible_listfile = "kbible_list.txt"
 _xref_ebible_listfile = "ebible_list.txt"
-#_find_bwverse = re.compile('(.*)(?<=\s)(\d*):(\d*[-\d*]*)')
+
+# (.*)(?<=\s)(\d+):(\d+[-\d]*)(,\d*f*)*
 #_find_bwverse = re.compile('(.*)(?<=\s)(\d*):(\d*[-\d*]*)([,\d*]*)')
-_find_bwverse = re.compile('(.*)(?<=\s)(\d*):(\d*[-\d*]*)([,\s*\d*a-z]*)')
-        
+#_find_bwverse = re.compile('(.*)(?<=\s)(\d*):(\d*[-\d*]*)')
+#_find_bwverse = re.compile('(.*)(?<=\s)(\d*):(\d*[-\d*]*)([,\s*\d*a-z]*)(?<=\s)')
+_find_bwverse = re.compile('(.*)(?<=\s)(\d*):(\d*[-\d*]*)([,\da-z]*)')
+    
 class xref_elem:
     def __init__(self, book=None, chap=None, v1=0, v2=0):
         self.book = book
         self.chap = chap
         self.v1   = v1
         self.v2   = v2
-        self.vlist= []
+        #self.vlist= []
 
 xref_list = []
 kbible_list = []
@@ -43,17 +49,19 @@ kbible_check_list = {}
 ebible_check_list = {}
 hgbible_check_list = {hgbible_list[0]:False, hgbible_list[1]:False}
 
-def get_wtt(key, chap, vers):
+def get_wtt_info(record):
+    return record[0], record[1], "(WTT %d:%d)"%(record[0],record[1])
+    
+def get_wtt(map_table, key, chap, vers):
+    wtt_map = bwxrefwtt.get_wtt_map_version(bwxrefwtt.get_wtt_map_key_wtt())
     map_key = '%02d:%d:%d'%(key, chap, vers)
-    if map_key in wmap.wtt_table:
-        map_info = wmap.wtt_table[map_key]
-        map_chap = map_info[0]
-        map_vers = map_info[1]
-        map_msg  = "(WTT %d:%d)"%(map_chap,map_vers)
-    else:
-        map_chap = chap
-        map_vers = vers
-        map_msg  = ''
+    map_chap, map_vers, map_msg = chap, vers, ''
+    
+    if map_key in wtt_map:
+        map_chap, map_vers, map_msg = get_wtt_info(wtt_map[map_key])
+    elif map_key in map_table:
+        map_chap, map_vers, map_msg = get_wtt_info(map_table[map_key])
+
     return map_chap, map_vers, map_msg
         
 def write_kbible_list():
@@ -67,24 +75,6 @@ def write_kbible_list():
     
     
 def read_kbible_list(): 
-    #global kbible_list, kbible_check_list
-    #
-    #try:
-    #    fr = open(_xref_kbible_listfile, 'rt')
-    #except:
-    #    fo = open(_xref_kbible_listfile, 'wt')
-    #    
-    #    fo.write('%d\n'%len(bwxreflib.korean_bible_name))
-    #    
-    #    for kb in xreflib.korean_bible_name:
-    #        fo.write('%s\n'%kb)
-    #    fo.close()
-    #    fr = open(_xref_kbible_listfile, 'rt')
-    #
-    #kbible_list = []
-    #kbible_check_list = {}
-    #
-    #nb = int(fr.readline())
     global kbible_list, kbible_check_list
     
     try:
@@ -143,7 +133,6 @@ def read_ebible_list():
     for i in range(nb):
         ebn = fr.readline().strip()
         ebible_list.append(ebn)
-        #ebible_check_list[ebn] = True if ebn == "NASB" else False
         ebible_check_list[ebn] = False
     fr.close()
     
@@ -165,7 +154,7 @@ def get_ebible_check_list():
 def get_hgbible_check_list():
     return hgbible_check_list
      
-def xref_to_txt(path, file, xref, wtt_map, db_list, msg):
+def xref_to_txt(path, file, xref, wtt_map, map_table, db_list, msg):
     
     file = '%s.txt'%file
     msg.appendPlainText('... XRef to Txt\n... Open %s'%file)
@@ -190,13 +179,13 @@ def xref_to_txt(path, file, xref, wtt_map, db_list, msg):
                 fo.write('====== %s ======\n'%key)
             except Exception as e:
                 e_str = str(e)
-                msg.appendPlainText('... Error => %s'%e_str)
+                msg.appendPlainText('... DB Error => %s'%e_str)
                 bwxrefcom.message_box(bwxrefcom.message_error, e_str)
                 return
             
             if x.v2 is 0:
-                if wtt_map: 
-                    chap, vers, m_msg = get_wtt(x.book, x.chap, x.v1)
+                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_wtt_map_key_nau(): 
+                    chap, vers, m_msg = get_wtt(map_table[1], x.book, x.chap, x.v1)
                 else:
                     chap, vers, m_msg = x.chap, x.v1, ''
 
@@ -210,34 +199,34 @@ def xref_to_txt(path, file, xref, wtt_map, db_list, msg):
                 for vtext in db_cur.execute(sql):
                     fo.write('%d. %s%s\n'%(x.v1, vtext[0], m_msg))
             else:
-                if wtt_map:
-                    v_list = [vv for vv in range(x.v1, x.v2+1)]
-                    #vl = []
+                v_list = [vv for vv in range(x.v1, x.v2+1)]
+                
+                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_wtt_map_key_nau(): 
                     for vv in v_list:
-                        chap, vers, m_msg = get_wtt(x.book, x.chap, vv)
+                        chap, vers, m_msg = get_wtt(map_table[1], x.book, x.chap, vv)
                         sql = 'SELECT btext from %s where book=%d '\
                               'and chapter=%d and verse=%d'%\
                               (db_tbl, x.book, chap, vv)
-                        for vtext in db_cur.execute(sql):
-                            #vl.append('<p>%d. %s%s</p>'%(vv, vtext[0], m_msg))
-                            fo.write('%d. %s%s'%(vv, vtext[0], m_msg))
+                        v_cur = db_cur.execute(sql)
+                        fo.write('%d. %s%s'%(vv, v_cur.fetchone()[0], m_msg))
                 else:
                     sql = 'SELECT btext from %s where book=%d '\
                         'and chapter=%d and verse between %d and %d'%\
                         (db_tbl, x.book, x.chap, x.v1, x.v2)
                       
                     fo.write('%s %d:%d-%d\n'%(e[2], x.chap, x.v1, x.v2))
-                    
-                    for i, vtext in enumerate(db_cur.execute(sql)):
-                        fo.write('%d. %s\n'%(x.v1+i, vtext[0]))
+                    v_cur = db_cur.execute(sql)
+                    for vi in v_list:
+                        fo.write('%d. %s\n'%(x.v1+i, v_cur.fetchone()[0]))
         fo.write('\n')
         db_con.close()
         msg.appendPlainText('... Close DB')
     fo.write('\n')
+    
     msg.appendPlainText('... Success')
     bwxrefcom.message_box(bwxrefcom.message_normal, 'Success')
 
-def xref_to_docx(path, file, xref, wtt_map, db_list, msg):
+def xref_to_docx(path, file, xref, wtt_map, map_table, db_list, msg):
     from docx import Document
     from docx.shared import Inches
 
@@ -258,6 +247,8 @@ def xref_to_docx(path, file, xref, wtt_map, db_list, msg):
     
     for icol, (key, db_file) in enumerate(db_list.items()):
         icol += 1
+        table.rows[0].cells[icol].text = key
+        
         try:
             msg.appendPlainText('... Open DB %s'%db_file)
             db_con = db.connect(db_file)
@@ -267,11 +258,10 @@ def xref_to_docx(path, file, xref, wtt_map, db_list, msg):
         except Exception as e:
             e_str = str(e)
             #print('Error =>', str(e))
-            msg.appendPlainText('... Error => %s'%e_str)
+            msg.appendPlainText('... DB Error => %s'%e_str)
             bwxrefcom.message_box(bwxrefcom.message_error, e_str)
             return
         
-        table.rows[0].cells[icol].text = key
             
         for irow, x in enumerate(xref):
             irow += 1
@@ -279,64 +269,63 @@ def xref_to_docx(path, file, xref, wtt_map, db_list, msg):
             #table.rows[irow].cells[0]._tc.tcPr.tcW.w = 0
         
             e = bwxreflib.table["%02d"%x.book]
-                
+            #table.rows[0].cells[icol].text = '%s %d:%d'%(e[2], x.chap, x.v1) if x.v2 == 0 else\
+            #                                 '%s %d:%d-d%'%(e[2], x.chap, x.v1, x.v2)
+            if x.v2 == 0:
+                table.rows[irow].cells[0].text = '%s %d:%d'%(e[2], x.chap, x.v1)
+            else:
+                table.rows[irow].cells[0].text = '%s %d:%d-%d'%(e[2], x.chap, x.v1, x.v2)          
+            
             if x.v2 is 0:
-                #table.rows[irow].cells[0].text = '%s %d:%d'%(e[2], x.chap, x.v1)
-                #sql = 'SELECT btext from %s where book=%d '\
-                #    'and chapter=%d and verse=%d'%\
-                #    (db_tbl, x.book, x.chap, x.v1)
-                #
-                #for vtext in db_cur.execute(sql):
-                #    table.rows[irow].cells[icol].text = '%d. %s'%(x.v1, vtext[0])
-                if wtt_map: 
-                    chap, vers, m_msg = get_wtt(x.book, x.chap, x.v1)
+                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_wtt_map_key_nau(): 
+                    chap, vers, m_msg = get_wtt(map_table[1], x.book, x.chap, x.v1)
                 else:
                     chap, vers, m_msg = x.chap, x.v1, ''
                 sql = 'SELECT btext from %s where book=%d '\
                       'and chapter=%d and verse=%d'%\
                       (db_tbl, x.book, chap, vers)
                           #(db_tbl, x.book, x.chap, x.v1)
-                for vtext in db_cur.execute(sql):
-                    html_row.append('%d. %s%s'%(x.v1, vtext[0], m_msg))
+                v_cur = db_cur.execute(sql)
+                table.rows[irow].cells[icol].text = '%d. %s%s'%(x.v1, v_cur.fetchone()[0], m_msg)
             else:
                 table.rows[irow].cells[0].text = '%s %d:%d-%d'%(e[2], x.chap, x.v1, x.v2)
-                
-                if wtt_map:
-                    v_list = [vv for vv in range(x.v1, x.v2+1)]
-                    vl = []
+                v_list = [vv for vv in range(x.v1, x.v2+1)]
+                vl = []
+                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_wtt_map_key_nau(): 
                     for vv in v_list:
-                        chap, vers, m_msg = get_wtt(x.book, x.chap, vv)
+                        chap, vers, m_msg = get_wtt(map_table[1], x.book, x.chap, vv)
                         sql = 'SELECT btext from %s where book=%d '\
                               'and chapter=%d and verse=%d'%\
                               (db_tbl, x.book, chap, vv)
-                        for vtext in db_cur.execute(sql):
-                            vl.append('<p>%d. %s%s</p>'%(vv, vtext[0], m_msg))
+                        v_cur = db_cur.execute(sql)
+                        vl.append('<p>%d. %s%s</p>'%(vv, v_cur.fetchone()[0], m_msg))
                 else:
                     sql = 'SELECT btext from %s where book=%d '\
                           'and chapter=%d and verse between %d and %d'%\
                           (db_tbl, x.book, x.chap, x.v1, x.v2)
-                    vl = []
-                    for i, vtext in enumerate(db_cur.execute(sql)):
-                        vl.append('%d. %s'%(x.v1+i, vtext[0]))
-            table.rows[irow].cells[icol].text = '\n'.join(vl)
+                    v_cur = db_cur.execute(sql)
+                    for vi in v_list:
+                        vl.append('%d. %s'%(vi, v_cur.fetchone()[0]))
+                table.rows[irow].cells[icol].text = '\n'.join(vl)
     
     try:
         document.save(os.path.join(path,file))
     except Exception as e:
         e_str = str(e)
-        msg.appendPlainText('... Error ==> %s'%e_str)
+        msg.appendPlainText('... Error(xref_to_docx) ==> %s'%e_str)
         bwxrefcom.message_box(bwxrefcom.message_error, e_str)
         return
         
     msg.appendPlainText('... success')
     bwxrefcom.message_box(bwxrefcom.message_normal, 'Success')
 
-    
-def xref_to_html(path, file, xref, wtt_map, db_list, msg):
+# map_table is a tuple (key, map_dictionary)
+
+def xref_to_html(path, file, xref, wtt_map, map_table, db_list, msg):
     file = '%s.html'%file
     msg.appendPlainText('... XRef to Html\n... Open %s'%file)
     try:
-        fo = open(os.path.join(path, file), 'wt')
+        fo = open(os.path.join(path, file), mode='wt', encoding='utf8')
     except Exception as e:
         e_str = str(e)
         msg.appendPlainText('... Error ==> %s'%e_str)
@@ -365,13 +354,13 @@ def xref_to_html(path, file, xref, wtt_map, db_list, msg):
                 #msg.appendPlainText(db_tbl)
             except Exception as e:
                 e_str = str(e)
-                msg.appendPlainText('... Error => %s'%e_str)
+                msg.appendPlainText('... DB Error => %s'%e_str)
                 bwxrefcom.message_box(bwxrefcom.message_error, e_str)
                 return
 
             if x.v2 is 0:
-                if wtt_map: 
-                    chap, vers, m_msg = get_wtt(x.book, x.chap, x.v1)
+                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_wtt_map_key_nau(): 
+                    chap, vers, m_msg = get_wtt(map_table[1], x.book, x.chap, x.v1)
                 else:
                     chap, vers, m_msg = x.chap, x.v1, ''
                 sql = 'SELECT btext from %s where book=%d '\
@@ -379,26 +368,31 @@ def xref_to_html(path, file, xref, wtt_map, db_list, msg):
                       (db_tbl, x.book, chap, vers)
                       #(db_tbl, x.book, x.chap, x.v1)
                       
-                for vtext in db_cur.execute(sql):
-                    html_row.append('%d. %s%s'%(x.v1, vtext[0], m_msg))
+                v_cur = db_cur.execute(sql)
+                html_row.append('%d. %s%s'%(x.v1, v_cur.fetchone()[0], m_msg))
+                #for vtext in db_cur.execute(sql):
+                #    html_row.append('%d. %s%s'%(x.v1, vtext[0], m_msg))
             else:
-                if wtt_map:
-                    v_list = [vv for vv in range(x.v1, x.v2+1)]
+                v_list = [vv for vv in range(x.v1, x.v2+1)]
+                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_wtt_map_key_nau(): 
                     vl = []
                     for vv in v_list:
-                        chap, vers, m_msg = get_wtt(x.book, x.chap, vv)
+                        chap, vers, m_msg = get_wtt(map_table[1], x.book, x.chap, vv)
                         sql = 'SELECT btext from %s where book=%d '\
                               'and chapter=%d and verse=%d'%\
                               (db_tbl, x.book, chap, vv)
-                        for vtext in db_cur.execute(sql):
-                            vl.append('<p>%d. %s%s</p>'%(vv, vtext[0], m_msg))
+                        v_cur = db_cur.execute(sql)
+                        vl.append('<p>%d. %s%s</p>'%(vv, v_cur.fetchone()[0], m_msg))
+                        #for vtext in db_cur.execute(sql):
+                        #    vl.append('<p>%d. %s%s</p>'%(vv, vtext[0], m_msg))
                 else:
                     sql = 'SELECT btext from %s where book=%d '\
                         'and chapter=%d and verse between %d and %d'%\
                         (db_tbl, x.book, x.chap, x.v1, x.v2)
+                    v_cur = db_cur.execute(sql)
                     vl = []
-                    for i, vtext in enumerate(db_cur.execute(sql)):
-                        vl.append('<p>%d. %s</p>'%(x.v1+i, vtext[0]))
+                    for vi in v_list:
+                        vl.append('<p>%d. %s</p>'%(vi, v_cur.fetchone()[0]))
                 html_row.append(''.join(vl))
             db_con.close()
             msg.appendPlainText('... Close DB')
@@ -423,7 +417,15 @@ def get_write_format_docx():
 def get_write_format_html():
     return write_format[2]
     
-def xref_to_kor(path, file, type, fmt=write_format[0], wtt_map = False, db_list=None, msg=None):
+def xref_to_kor(path, 
+                file, 
+                type, 
+                fmt=write_format[0], 
+                wtt_map = False,
+                map_table=None, 
+                db_list=None, 
+                msg=None):
+                
     global xref_list
    
     msg.appendPlainText('... xref_to_kor\n... Get clipboard data')
@@ -448,7 +450,6 @@ def xref_to_kor(path, file, type, fmt=write_format[0], wtt_map = False, db_list=
     for v in verselist:
         match = _find_bwverse.search(v)
         if match:
-            #print(match.group(0))
             book = match.group(1).strip()
             num  = bwxreflib.get_book_num(book, type)
             if num < 0:
@@ -461,14 +462,14 @@ def xref_to_kor(path, file, type, fmt=write_format[0], wtt_map = False, db_list=
             chap  = int(match.group(2))
             verse = match.group(3)
             extra = match.group(4)
-
+            
             if verse.find('-') > -1:
                 vv = verse.split('-')
                 v1 = int(vv[0])
                 v2 = int(vv[1])
                 xref = xref_elem(book, chap, v1, v2)
-            elif extra.find(',') > -1:
-                # example: Matt. 24:3,27,37,39
+            elif extra and extra.find(',') > -1:
+                # example: Matt. 24:3,27f,37,39ff
                 xref_list.append(xref_elem(book, chap, int(verse)))
                 vv = extra.split(',')
                 vv.pop(0)
@@ -487,7 +488,7 @@ def xref_to_kor(path, file, type, fmt=write_format[0], wtt_map = False, db_list=
         bwxrefcom.message_box(bwxrefcom.message_warning, e_str)
         return
         
-    write_xref[fmt](path, file, xref_list, wtt_map, db_list, msg)
+    write_xref[fmt](path, file, xref_list, wtt_map, map_table, db_list, msg)
     if non_canon_book: 
         bwxrefcom.message_box(bwxrefcom.message_normal, "Check the message")
     msg.appendPlainText('... Success')

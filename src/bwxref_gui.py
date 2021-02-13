@@ -3,6 +3,7 @@
     
     2/3/21  Ver 0.1
     2/4/21  Added BibleWorks Export 
+    2/11/21 WTT Mapping
 
     English Bible
     
@@ -30,6 +31,8 @@ from collections import OrderedDict
 
 import bwxreflib
 import bwxref
+import bwxrefwtt
+
 import icon_bwxref
 import icon_docx
 import icon_html
@@ -48,7 +51,7 @@ _message_tab_text   = 'Message'
 _kbible_path_file   = 'kbible_path.txt'
 _ebible_path_file   = 'ebible_path.txt'
 _default_output_file= 'xref'
-
+_change_path_key    = ['Current', "All"]
 
 class QBibleDatabaseButton(QtGui.QPushButton):
     def __init__(self, key):
@@ -57,16 +60,17 @@ class QBibleDatabaseButton(QtGui.QPushButton):
         
 class QChangePath(QtGui.QDialog):
     # db is Tab label ('KDB' or 'EDB')
-    def __init__(self, bwx, db):
+    def __init__(self, bwx, db_key):
         super(QChangePath, self).__init__()
         self.bwx = bwx
-        self.db = db
+        self.db_key = db_key
         self.initUI()
         
     def initUI(self):
         layout = QtGui.QFormLayout()
         # Create an array of radio buttons
-        moods = [QtGui.QRadioButton("Current"), QtGui.QRadioButton("All")]
+        self.moods = [QtGui.QRadioButton(_change_path_key[0]), 
+                      QtGui.QRadioButton(_change_path_key[1])]
 
         # Radio buttons usually are in a vertical layout   
         source_layout = QtGui.QHBoxLayout()
@@ -74,20 +78,20 @@ class QChangePath(QtGui.QDialog):
         # Create a button group for radio buttons
         self.mood_button_group = QtGui.QButtonGroup()
 
-        for i in range(len(moods)):
+        for i in range(len(self.moods)):
             # Add each radio button to the button layout
-            source_layout.addWidget(moods[i])
+            source_layout.addWidget(self.moods[i])
             # Add each radio button to the button group & give it an ID of i
-            self.mood_button_group.addButton(moods[i], i)
+            self.mood_button_group.addButton(self.moods[i], i)
             # Connect each radio button to a method to run when it's clicked
-            self.connect(moods[i], QtCore.SIGNAL("clicked()"), self.radio_button_clicked)
+            self.connect(self.moods[i], QtCore.SIGNAL("clicked()"), self.radio_button_clicked)
 
         # Set a radio button to be checked by default
-        moods[0].setChecked(True)   
+        self.moods[0].setChecked(True)   
         
         source_type_layout = QtGui.QVBoxLayout()
         self.bible_list = QtGui.QComboBox()
-        if self.db == _kdb_tab_text:
+        if self.db_key == _kdb_tab_text:
             self.bible_list.addItems(self.bwx.get_kdb_path())
         else:
             self.bible_list.addItems(self.bwx.get_edb_path())
@@ -120,7 +124,7 @@ class QChangePath(QtGui.QDialog):
         #    self.user_input.setEnabled(True)
     
     def get_source(self):
-        return self.mood_button_group.checkedId()
+        return self.moods[self.mood_button_group.checkedId()].text(), self.bible_list.currentText()
 
 
 class XRefConvert(QtGui.QWidget):
@@ -168,10 +172,10 @@ class XRefConvert(QtGui.QWidget):
         self.show()
         
     def get_kdb_path(self):
-        return self.kbible_path.items()
+        return [self.kbible_path[key].text() for key in self.kbible_path.keys()]
         
     def get_edb_path(self):
-        return self.ebible_path.items()
+        return [self.ebible_path[key].text() for key in self.ebible_path.keys()]
     
     def xref_tab_UI(self):
         form_layout  = QtGui.QFormLayout()
@@ -202,7 +206,15 @@ class XRefConvert(QtGui.QWidget):
         layout.addWidget(QtGui.QLabel("WTT Mapping"), 1, 0)
         self.wtt_mapping_chk = QtGui.QCheckBox()
         self.wtt_mapping_chk.setChecked(False)
+        self.wtt_mapping_chk.stateChanged.connect(self.enable_wtt_map_key)
         layout.addWidget(self.wtt_mapping_chk, 1, 1)
+        
+        layout.addWidget(QtGui.QLabel("Map Version"), 2, 0)
+        self.wtt_map_key_cmb = QtGui.QComboBox()
+        self.wtt_map_key_cmb.addItems(bwxrefwtt.wtt_map_key)
+        self.wtt_map_key_cmb.setEnabled(False)
+        layout.addWidget(self.wtt_map_key_cmb, 2,1)
+        
         form_layout.addRow(layout)
   
         layout = QtGui.QHBoxLayout()
@@ -232,6 +244,12 @@ class XRefConvert(QtGui.QWidget):
         
         self.xref_tab.setLayout(form_layout)
     
+    def enable_wtt_map_key(self):
+        if self.wtt_mapping_chk.isChecked():
+            self.wtt_map_key_cmb.setEnabled(True)
+        else:
+            self.wtt_map_key_cmb.setEnabled(False)
+            
     def set_wtt_mapping(self):
         if self.xref_type_combo.currentText() == bwxreflib.get_xref_type_bwxref():
             self.wtt_mapping_chk.setChecked(False)
@@ -260,13 +278,13 @@ class XRefConvert(QtGui.QWidget):
             self.save_kbible_path_btn = save_btn
             self.load_kbible_path_btn = load_btn
             self.connect(self.save_kbible_path_btn, QtCore.SIGNAL('clicked()'), self.save_bible_path)
-            self.connect(self.load_kbible_path_btn, QtCore.SIGNAL('clicked()'), self.load_bible_path)
+            self.connect(self.load_kbible_path_btn, QtCore.SIGNAL('clicked()'), self.load_kbible_path)
         elif key == 'eng':
             self.copy_ebible_path_btn = copy_btn
             self.save_ebible_path_btn = save_btn
             self.load_ebible_path_btn = load_btn
             self.connect(self.save_ebible_path_btn, QtCore.SIGNAL('clicked()'), self.save_bible_path)
-            self.connect(self.load_ebible_path_btn, QtCore.SIGNAL('clicked()'), self.load_bible_path)
+            self.connect(self.load_ebible_path_btn, QtCore.SIGNAL('clicked()'), self.load_ebible_path)
         
         layout.addWidget(copy_btn)
         layout.addWidget(save_btn)
@@ -323,11 +341,11 @@ class XRefConvert(QtGui.QWidget):
         if key == 'kor': 
             self.kdb_tab.setLayout(form_layout)
             # load db info
-            self.load_bible_path('kor', _kbible_path_file)
+            self.load_kbible_path()
         if key == 'eng': 
             self.edb_tab.setLayout(form_layout)
             # load db info
-            self.load_bible_path('eng', _ebible_path_file)
+            self.load_ebible_path()
         
     def check_db_tab_UI(self):
         layout = QtGui.QFormLayout()
@@ -375,11 +393,11 @@ class XRefConvert(QtGui.QWidget):
         self.hgbible_checker = {}
         ncol = 3
         row = 0
-        
         for i, hgbib in enumerate(bwxref.get_hgbible_list()):
             checker = QtGui.QCheckBox(hgbib, self)
             checker.setChecked(hgcheck_list[hgbib])
             self.hgbible_checker[hgbib] = checker
+            checker.setEnabled(False)
             col = i % ncol
             row = row+1 if i is not 0 and i%ncol is 0 else row
             hgbib_layout.addWidget(self.hgbible_checker[hgbib], row, col)
@@ -438,31 +456,55 @@ class XRefConvert(QtGui.QWidget):
     # 한글킹제임스,d:\한글DB,한글킹.bdb 
     # 현대어성경,d:\한글DB,현대어.bdb
     # 현대인성경,d:\한글DB,현대인.bdb
-    def save_bible_path(self, key, path_file):
+    def save_bible_path(self):#, key, path_file):
+        
+        if self.bible_path_key == 'kor':
+            file = self.kbible_file
+            path = self.kbible_path
+            path_file = _kbible_path_file
+        elif self.bible_path_key == 'eng':
+            file = self.ebible_file
+            path = self.ebible_path
+            path_file = _ebible_path_file
+            
         try:
+            self.message.appendPlainText('... Save %s Bible'%self.bible_path_key)
             with open(path_file, "wt") as fo:
-                file = self.kbible_file if key == 'kor' else self.ebible_file
-                path = self.kbible_path if key == 'eng' else self.ebible_path
-                keys = file.keys()
-                fo.write(len())
-                for key in keys:
-                    kf = file[key]
-                    kp = path[key]
-                    fo.write("%s,%s,%s\n" %(key, kp.text(), kf.text()))
+                #keys = file.keys()
+                nb = len(file)
+                self.message.appendPlainText('... %d files'%nb)
+                fo.write('%d\n'%nb)
+                for key in file.keys():
+                    ff = file[key]
+                    fp = path[key]
+                    fo.write("%s,%s,%s\n" %(key, fp.text(), ff.text()))
         except Exception as e:
             self.message.appendPlainText('... Error(save_bible_path) ==> %s'%str(e))
-            
-    def load_bible_path(self, key, path_file):
+            return
+        self.message.appendPlainText('... Success')
+     
+    def load_kbible_path(self):
+        self.bible_path_key = 'kor'
+        self.load_bible_path()
+        
+    def load_ebible_path(self):
+        self.bible_path_key = 'eng'
+        self.load_bible_path()
+        
+    def load_bible_path(self):#, key, path_file):
+        if self.bible_path_key == 'kor':
+            file = self.kbible_file
+            path = self.kbible_path
+            path_file = _kbible_path_file
+        elif self.bible_path_key == 'eng':
+            file = self.ebible_file
+            path = self.ebible_path
+            path_file = _ebible_path_file
         try:
+            self.message.appendPlainText('... Load %s Bible'%self.bible_path_key)
             with open(path_file, "rt") as fr:
                 nb = fr.readline()
-                if key == 'kor':
-                    file = self.kbible_file
-                    path = self.kbible_path
-                elif key == 'eng':
-                    file = self.ebible_file
-                    path = self.ebible_path
-
+                self.message.appendPlainText('... Read %d files'%int(nb))
                 for line in fr:
                     info = line.strip().split(',')
                     bn = info[0].strip()
@@ -470,9 +512,32 @@ class XRefConvert(QtGui.QWidget):
                     file[bn].setText(info[2].strip())
         except Exception as e:
             self.message.appendPlainText('... Error(load_bible_path) ==> %s'%str(e))   
+            return
+            
+        self.message.appendPlainText('... Success')   
         
     def apply_source_path_all(self):
-        return
+        tab_text = self.tabs.tabText(self.tabs.currentIndex())
+        change_path_dlg = QChangePath(self, tab_text)
+		
+        if change_path_dlg.exec_() is not 1:
+            return
+            
+        type, src_path = change_path_dlg.get_source()
+        
+        if type == _change_path_key[0]: #current
+            if tab_text == _kdb_tab_text:
+                dest_path = self.kbible_path
+            else:
+                dest_path = self.ebible_path
+            
+            for k in dest_path.keys():
+                dest_path[k].setText(src_path) 
+        else: #all
+            dest_path = [self.kbible_path, self.ebible_path]
+            for path in dest_path:
+                for k in path.keys():
+                    path[k].setText(src_path) 
         
     def choose_output_folder(self):
         cur_path = os.getcwd() 
@@ -501,6 +566,12 @@ class XRefConvert(QtGui.QWidget):
     def get_output_file(self):
         return os.path.join(self.xref_output_path.text(), self.xref_output.text())
         
+    def get_map_table(self):
+        map_key = self.wtt_map_key_cmb.currentText()
+        return (map_key, bwxrefwtt.get_wtt_map_version(map_key))\
+               if self.wtt_mapping_chk.isChecked() else (map_key, None)
+        #return bwxrefwtt.get_wtt_map_version(bwxrefwtt.get_wtt_map_key_wtt())
+        
     def xref_save_txt(self):
         self.message.appendPlainText('... xref to txt')
         self.confirm_db_check()
@@ -509,9 +580,10 @@ class XRefConvert(QtGui.QWidget):
         bwxref.xref_to_kor(path, file, self.xref_type_combo.currentText(),
                            bwxref.get_write_format_txt(), 
                            self.wtt_mapping_chk.isChecked(),
+                           self.get_map_table(),                       
                            self.db_list, 
                            self.message)
-        
+            
     def xref_save_docx(self):
         self.message.appendPlainText('... xref to docx')
         self.confirm_db_check()
@@ -520,6 +592,7 @@ class XRefConvert(QtGui.QWidget):
         bwxref.xref_to_kor(path, file, self.xref_type_combo.currentText(), 
                            bwxref.get_write_format_docx(), 
                            self.wtt_mapping_chk.isChecked(),
+                           self.get_map_table(),
                            self.db_list, 
                            self.message)
         
@@ -531,6 +604,7 @@ class XRefConvert(QtGui.QWidget):
         bwxref.xref_to_kor(path, file, self.xref_type_combo.currentText(), 
                            bwxref.get_write_format_html(), 
                            self.wtt_mapping_chk.isChecked(),
+                           self.get_map_table(),                           
                            self.db_list, 
                            self.message)
         

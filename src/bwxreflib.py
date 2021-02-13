@@ -33,7 +33,7 @@ english_bible_name = [
     'ISV' , # International Standard Version
     'KJV' , # King James Version
     'MSG' , # Message Version
-    'NAS1995', # New American Standard Bible
+    'NASB', # New American Standard Bible
     'NIV1984', # New Internation Version (as literal as possible)
                # NIV 2011 adopted neuteral vocabularies and changed grammatical
                # inconsistency such as the mismatch of a subject(sing/plr) and verb
@@ -116,6 +116,9 @@ table = {
 '66': ['계'  , 'Rev', '요한계시록'     , 'Revelation'     , 'Rev.'    ]
 }
 
+def get_book_name(key):
+    return table['%02d'%key][0]
+    
 def create_book_to_num():
     global book_to_num_xref, book_to_num_export
     
