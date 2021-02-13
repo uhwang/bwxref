@@ -5,10 +5,16 @@
     2/4/21  Multiple Korean Bible DB
             Added BibleWorks Export 
     2/11/21 WTT Mapping
-
+    
+    2/13/21 Package not found at ... library.zip/docx/templates/default.docx
+            1) pip install -U setuptools  (not working)
+            2) "includes": ['lxml.etree', 'lxml._elementpath' ... (not working)
+            3) copy default.docx and default-settings.xml to XRef folder
+               Document('default.docx') (working!!)
 '''
 import re
 import os
+import lxml
 import sqlite3 as db
 import clipboard
 import HTML 
@@ -234,14 +240,19 @@ def xref_to_docx(path, file, xref, wtt_map, map_table, db_list, msg):
     msg.appendPlainText('... XRef to Docx\n... Open: %s'%file)
 
     ndb = len(db_list)
-    document = Document()
+    
+    try:
+        document = Document('default.docx')
+    except Exception as e:
+        e_str = "... Error(xref_to_docx): Can't create Word Document.\n%s"%str(e)
+        msg.appendPlainText(e_str)
+        bwxrefcom.message_box(bwxrefcom.message_error, e_str)
+        return
+        
     rows = len(xref)+1
     cols = ndb+1
     msg.appendPlainText('... Table(row,col): %d x %d'%(rows,cols))
     table = document.add_table(rows=rows, cols=cols)
-
-    #for irow in range(rows): 
-    #    table.add_row()
     
     table.rows[0].cells[0].text = "성경구절"
     
@@ -489,6 +500,7 @@ def xref_to_kor(path,
         return
         
     write_xref[fmt](path, file, xref_list, wtt_map, map_table, db_list, msg)
+    
     if non_canon_book: 
         bwxrefcom.message_box(bwxrefcom.message_normal, "Check the message")
     msg.appendPlainText('... Success')
