@@ -4,6 +4,8 @@
     2/3/21  Ver 0.1
     2/4/21  Added BibleWorks Export 
     2/11/21 WTT Mapping
+    mportError: (cannot import name _elementpath) 'C:\\Users\\ul20a\\OneDrive - Southwestern Baptist Theological Seminary\\Python\\bwxref\\XRef\\lxml.etree.pyd'
+Traceback (most recent call last):
 
     English Bible
     
@@ -52,10 +54,12 @@ _kbible_path_file   = 'kbible_path.txt'
 _ebible_path_file   = 'ebible_path.txt'
 _default_output_file= 'xref'
 _change_path_key    = ['Current', "All"]
+_korean_bible_key   = 'kor'
+_english_bible_key  = 'eng'
 
-class QBibleDatabaseButton(QtGui.QPushButton):
+class QKeyButton(QtGui.QPushButton):
     def __init__(self, key):
-        super(QBibleDatabaseButton, self).__init__()
+        super(QKeyButton, self).__init__()
         self.key = key
         
 class QChangePath(QtGui.QDialog):
@@ -218,23 +222,23 @@ class XRefConvert(QtGui.QWidget):
         form_layout.addRow(layout)
   
         layout = QtGui.QHBoxLayout()
-        self.xref_save_txt_btn = QtGui.QPushButton(bwxref.get_write_format_txt(), self)
-        
+        self.xref_save_txt_btn = QKeyButton(bwxref.get_write_format_txt())       
         self.xref_save_txt_btn.setIcon(QtGui.QIcon(QtGui.QPixmap(icon_txt.table)))
         self.xref_save_txt_btn.setIconSize(QtCore.QSize(24,24))
-        self.connect(self.xref_save_txt_btn, QtCore.SIGNAL('clicked()'), self.xref_save_txt)
+        self.xref_save_txt_btn.setText(bwxref.get_write_format_txt())
+        self.connect(self.xref_save_txt_btn, QtCore.SIGNAL('clicked()'), self.save_xref)
 
-        self.xref_save_docx_btn = QtGui.QPushButton(bwxref.get_write_format_docx(), self)
-        
+        self.xref_save_docx_btn = QKeyButton(bwxref.get_write_format_docx())       
         self.xref_save_docx_btn.setIcon(QtGui.QIcon(QtGui.QPixmap(icon_docx.table)))
         self.xref_save_docx_btn.setIconSize(QtCore.QSize(24,24))
-        self.connect(self.xref_save_docx_btn, QtCore.SIGNAL('clicked()'), self.xref_save_docx)
+        self.xref_save_docx_btn.setText(bwxref.get_write_format_docx())
+        self.connect(self.xref_save_docx_btn, QtCore.SIGNAL('clicked()'), self.save_xref)
 
-        self.xref_save_html_btn = QtGui.QPushButton(bwxref.get_write_format_html(), self)
-
+        self.xref_save_html_btn = QKeyButton(bwxref.get_write_format_html())
         self.xref_save_html_btn.setIcon(QtGui.QIcon(QtGui.QPixmap(icon_html.table)))
         self.xref_save_html_btn.setIconSize(QtCore.QSize(24,24))
-        self.connect(self.xref_save_html_btn, QtCore.SIGNAL('clicked()'), self.xref_save_html)
+        self.xref_save_html_btn.setText(bwxref.get_write_format_html())
+        self.connect(self.xref_save_html_btn, QtCore.SIGNAL('clicked()'), self.save_xref)
         
         layout.addWidget(self.xref_save_txt_btn)
         layout.addWidget(self.xref_save_docx_btn)
@@ -273,13 +277,13 @@ class XRefConvert(QtGui.QWidget):
         load_btn.setIcon(QtGui.QIcon(QtGui.QPixmap(icon_load.table)))
         load_btn.setIconSize(QtCore.QSize(16,16))
 
-        if key == 'kor':
+        if key == _korean_bible_key:
             self.copy_kbible_path_btn = copy_btn
             self.save_kbible_path_btn = save_btn
             self.load_kbible_path_btn = load_btn
             self.connect(self.save_kbible_path_btn, QtCore.SIGNAL('clicked()'), self.save_bible_path)
             self.connect(self.load_kbible_path_btn, QtCore.SIGNAL('clicked()'), self.load_kbible_path)
-        elif key == 'eng':
+        elif key == _english_bible_key:
             self.copy_ebible_path_btn = copy_btn
             self.save_ebible_path_btn = save_btn
             self.load_ebible_path_btn = load_btn
@@ -297,7 +301,7 @@ class XRefConvert(QtGui.QWidget):
         grid.addWidget(QtGui.QLabel("Path"  ), 0,2)
         grid.addWidget(QtGui.QLabel("Folder"), 0,3)
         
-        if key == 'kor':
+        if key == _korean_bible_key:
             self.kbible_layout = grid
             self.kbible_file = {}
             self.kbible_path = {}
@@ -307,7 +311,7 @@ class XRefConvert(QtGui.QWidget):
             file = self.kbible_file
             path = self.kbible_path
             select = self.kbible_select
-        elif key == 'eng':
+        elif key == _english_bible_key:
             self.ebible_layout = grid
             self.ebible_file = {}
             self.ebible_path = {}
@@ -321,7 +325,7 @@ class XRefConvert(QtGui.QWidget):
         for i, bn in enumerate(bbl):
             file  [bn] = QtGui.QLineEdit()
             path  [bn] = QtGui.QLineEdit()
-            select[bn] = QBibleDatabaseButton(bn)
+            select[bn] = QKeyButton(bn)
             select[bn].setIcon(QtGui.QIcon(QtGui.QPixmap(icon_folder_open.table)))
             select[bn].setIconSize(QtCore.QSize(16,16))
             self.connect(select[bn], QtCore.SIGNAL('clicked()'), self.select_source_path)
@@ -338,11 +342,11 @@ class XRefConvert(QtGui.QWidget):
         
         #form_layout.addRow(self.kbible_layout)
         form_layout.addRow(grid)
-        if key == 'kor': 
+        if key == _korean_bible_key: 
             self.kdb_tab.setLayout(form_layout)
             # load db info
             self.load_kbible_path()
-        if key == 'eng': 
+        if key == _english_bible_key: 
             self.edb_tab.setLayout(form_layout)
             # load db info
             self.load_ebible_path()
@@ -458,11 +462,11 @@ class XRefConvert(QtGui.QWidget):
     # 현대인성경,d:\한글DB,현대인.bdb
     def save_bible_path(self):#, key, path_file):
         
-        if self.bible_path_key == 'kor':
+        if self.bible_path_key == _korean_bible_key:
             file = self.kbible_file
             path = self.kbible_path
             path_file = _kbible_path_file
-        elif self.bible_path_key == 'eng':
+        elif self.bible_path_key == _english_bible_key:
             file = self.ebible_file
             path = self.ebible_path
             path_file = _ebible_path_file
@@ -484,19 +488,19 @@ class XRefConvert(QtGui.QWidget):
         self.message.appendPlainText('... Success')
      
     def load_kbible_path(self):
-        self.bible_path_key = 'kor'
+        self.bible_path_key = _korean_bible_key
         self.load_bible_path()
         
     def load_ebible_path(self):
-        self.bible_path_key = 'eng'
+        self.bible_path_key = _english_bible_key
         self.load_bible_path()
         
     def load_bible_path(self):#, key, path_file):
-        if self.bible_path_key == 'kor':
+        if self.bible_path_key == _korean_bible_key:
             file = self.kbible_file
             path = self.kbible_path
             path_file = _kbible_path_file
-        elif self.bible_path_key == 'eng':
+        elif self.bible_path_key == _english_bible_key:
             file = self.ebible_file
             path = self.ebible_path
             path_file = _ebible_path_file
@@ -570,44 +574,22 @@ class XRefConvert(QtGui.QWidget):
         map_key = self.wtt_map_key_cmb.currentText()
         return (map_key, bwxrefwtt.get_wtt_map_version(map_key))\
                if self.wtt_mapping_chk.isChecked() else (map_key, None)
-        #return bwxrefwtt.get_wtt_map_version(bwxrefwtt.get_wtt_map_key_wtt())
         
-    def xref_save_txt(self):
-        self.message.appendPlainText('... xref to txt')
+        
+    def save_xref(self):
+        btn = self.sender()
+        self.message.appendPlainText('... xref to %s'%btn.key)
         self.confirm_db_check()
-        #fn = "%s.txt"%self.get_output_file()
         path, file = self.xref_output_path.text(), self.xref_output.text()
-        bwxref.xref_to_kor(path, file, self.xref_type_combo.currentText(),
-                           bwxref.get_write_format_txt(), 
+        bwxref.xref_to_kor(path, 
+                           file, 
+                           self.xref_type_combo.currentText(),
+                           btn.key,
                            self.wtt_mapping_chk.isChecked(),
                            self.get_map_table(),                       
                            self.db_list, 
                            self.message)
-            
-    def xref_save_docx(self):
-        self.message.appendPlainText('... xref to docx')
-        self.confirm_db_check()
-        #fn = "%s.docx"%self.get_output_file()
-        path, file = self.xref_output_path.text(), self.xref_output.text()
-        bwxref.xref_to_kor(path, file, self.xref_type_combo.currentText(), 
-                           bwxref.get_write_format_docx(), 
-                           self.wtt_mapping_chk.isChecked(),
-                           self.get_map_table(),
-                           self.db_list, 
-                           self.message)
-        
-    def xref_save_html(self):
-        self.message.appendPlainText('... xref to html')
-        self.confirm_db_check()
-        #fn = "%s.html"%self.get_output_file()
-        path, file = self.xref_output_path.text(), self.xref_output.text()
-        bwxref.xref_to_kor(path, file, self.xref_type_combo.currentText(), 
-                           bwxref.get_write_format_html(), 
-                           self.wtt_mapping_chk.isChecked(),
-                           self.get_map_table(),                           
-                           self.db_list, 
-                           self.message)
-        
+
 def main(): 
     app = QtGui.QApplication(sys.argv)
     QtGui.QApplication.setStyle(QtGui.QStyleFactory.create(u'Plastique'))

@@ -55,19 +55,28 @@ kbible_check_list = {}
 ebible_check_list = {}
 hgbible_check_list = {hgbible_list[0]:False, hgbible_list[1]:False}
 
+wtt_to_nau = bwxrefwtt.get_wtt_map_version(bwxrefwtt.get_map_key_wtt())
+
 def get_wtt_info(record):
     return record[0], record[1], "(WTT %d:%d)"%(record[0],record[1])
     
 def get_wtt(map_table, key, chap, vers):
-    wtt_map = bwxrefwtt.get_wtt_map_version(bwxrefwtt.get_wtt_map_key_wtt())
     map_key = '%02d:%d:%d'%(key, chap, vers)
     map_chap, map_vers, map_msg = chap, vers, ''
     
-    if map_key in wtt_map:
-        map_chap, map_vers, map_msg = get_wtt_info(wtt_map[map_key])
-    elif map_key in map_table:
+    # BGM to WTT
+    if map_key in map_table:
         map_chap, map_vers, map_msg = get_wtt_info(map_table[map_key])
-
+        map_key = '%02d:%d:%d'%(key, map_chap, map_vers)
+        # WTT to NAU
+        #print(map_key)
+        if map_key in wtt_to_nau:
+            #print('... yes')
+            map_chap, map_vers, _ = get_wtt_info(wtt_to_nau[map_key])
+            #print('%02d:%d:%d'%(key, map_chap, map_vers))
+    elif map_key in wtt_to_nau:
+        map_chap, map_vers, map_msg = get_wtt_info(wtt_to_nau[map_key])
+        
     return map_chap, map_vers, map_msg
         
 def write_kbible_list():
@@ -190,7 +199,7 @@ def xref_to_txt(path, file, xref, wtt_map, map_table, db_list, msg):
                 return
             
             if x.v2 is 0:
-                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_wtt_map_key_nau(): 
+                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_map_key_nau(): 
                     chap, vers, m_msg = get_wtt(map_table[1], x.book, x.chap, x.v1)
                 else:
                     chap, vers, m_msg = x.chap, x.v1, ''
@@ -202,19 +211,37 @@ def xref_to_txt(path, file, xref, wtt_map, map_table, db_list, msg):
                       
                 fo.write('%s %d:%d\n'%(e[2], x.chap, x.v1))
                 
-                for vtext in db_cur.execute(sql):
-                    fo.write('%d. %s%s\n'%(x.v1, vtext[0], m_msg))
+                v_text = 'Not found'
+                try:
+                    v_cur = db_cur.execute(sql)
+                    v_temp = v_cur.fetchone()[0]
+                except Exception as e:
+                    e_str = "... Error %s(%d) %d:%d not found"%(b_name[2], x.book, x.chap, x.v1)
+                    msg.appendPlainText(e_str)
+                    bwxrefcom.message_box(bwxrefcom.message_warning, e_str)
+                    continue  
+                if v_temp != '': v_text = v_temp  
+                fo.write('%d. %s%s\n'%(x.v1, v_text, m_msg))
             else:
                 v_list = [vv for vv in range(x.v1, x.v2+1)]
                 
-                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_wtt_map_key_nau(): 
+                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_map_key_nau(): 
                     for vv in v_list:
                         chap, vers, m_msg = get_wtt(map_table[1], x.book, x.chap, vv)
                         sql = 'SELECT btext from %s where book=%d '\
                               'and chapter=%d and verse=%d'%\
                               (db_tbl, x.book, chap, vv)
-                        v_cur = db_cur.execute(sql)
-                        fo.write('%d. %s%s'%(vv, v_cur.fetchone()[0], m_msg))
+                        v_text = 'Not found'
+                        try:
+                            v_cur = db_cur.execute(sql)
+                            v_temp = v_cur.fetchone()[0]
+                        except Exception as e:
+                            e_str = "... Error %s(%d) %d:%d not found"%(b_name[2], x.book, x.chap, x.v1)
+                            msg.appendPlainText(e_str)
+                            bwxrefcom.message_box(bwxrefcom.message_warning, e_str)
+                            continue  
+                        if v_temp != '': v_text = v_temp  
+                        fo.write('%d. %s%s'%(vv, v_text, m_msg))
                 else:
                     sql = 'SELECT btext from %s where book=%d '\
                         'and chapter=%d and verse between %d and %d'%\
@@ -223,7 +250,7 @@ def xref_to_txt(path, file, xref, wtt_map, map_table, db_list, msg):
                     fo.write('%s %d:%d-%d\n'%(e[2], x.chap, x.v1, x.v2))
                     v_cur = db_cur.execute(sql)
                     for vi in v_list:
-                        fo.write('%d. %s\n'%(x.v1+i, v_cur.fetchone()[0]))
+                        fo.write('%d. %s\n'%(x.v1+vi, v_cur.fetchone()[0]))
         fo.write('\n')
         db_con.close()
         msg.appendPlainText('... Close DB')
@@ -273,7 +300,6 @@ def xref_to_docx(path, file, xref, wtt_map, map_table, db_list, msg):
             bwxrefcom.message_box(bwxrefcom.message_error, e_str)
             return
         
-            
         for irow, x in enumerate(xref):
             irow += 1
             #table.rows[irow].cells[0]._tc.tcPr.tcW.type = 'auto'
@@ -288,7 +314,7 @@ def xref_to_docx(path, file, xref, wtt_map, map_table, db_list, msg):
                 table.rows[irow].cells[0].text = '%s %d:%d-%d'%(e[2], x.chap, x.v1, x.v2)          
             
             if x.v2 is 0:
-                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_wtt_map_key_nau(): 
+                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_map_key_nau(): 
                     chap, vers, m_msg = get_wtt(map_table[1], x.book, x.chap, x.v1)
                 else:
                     chap, vers, m_msg = x.chap, x.v1, ''
@@ -296,20 +322,38 @@ def xref_to_docx(path, file, xref, wtt_map, map_table, db_list, msg):
                       'and chapter=%d and verse=%d'%\
                       (db_tbl, x.book, chap, vers)
                           #(db_tbl, x.book, x.chap, x.v1)
-                v_cur = db_cur.execute(sql)
-                table.rows[irow].cells[icol].text = '%d. %s%s'%(x.v1, v_cur.fetchone()[0], m_msg)
+                v_text = 'Not found'
+                try:
+                    v_cur = db_cur.execute(sql)
+                    v_temp = v_cur.fetchone()[0]
+                except Exception as e:
+                    e_str = "... Error %s(%d) %d:%d not found"%(b_name[2], x.book, x.chap, x.v1)
+                    msg.appendPlainText(e_str)
+                    bwxrefcom.message_box(bwxrefcom.message_warning, e_str)
+                    continue    
+                if v_temp != '': v_text = v_temp  
+                table.rows[irow].cells[icol].text = '%d. %s%s'%(x.v1, v_text, m_msg)
             else:
                 table.rows[irow].cells[0].text = '%s %d:%d-%d'%(e[2], x.chap, x.v1, x.v2)
                 v_list = [vv for vv in range(x.v1, x.v2+1)]
                 vl = []
-                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_wtt_map_key_nau(): 
+                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_map_key_nau(): 
                     for vv in v_list:
                         chap, vers, m_msg = get_wtt(map_table[1], x.book, x.chap, vv)
                         sql = 'SELECT btext from %s where book=%d '\
                               'and chapter=%d and verse=%d'%\
                               (db_tbl, x.book, chap, vv)
-                        v_cur = db_cur.execute(sql)
-                        vl.append('<p>%d. %s%s</p>'%(vv, v_cur.fetchone()[0], m_msg))
+                        v_text = 'Not found'
+                        try:
+                            v_cur = db_cur.execute(sql)
+                            v_temp = v_cur.fetchone()[0]
+                        except Exception as e:
+                            e_str = "... Error %s(%d) %d:%d not found"%(b_name[2], x.book, x.chap, x.v1)
+                            msg.appendPlainText(e_str)
+                            bwxrefcom.message_box(bwxrefcom.message_warning, e_str)
+                            continue
+                        if v_temp != '': v_text = v_temp  
+                        vl.append('<p>%d. %s%s</p>'%(vv, v_text, m_msg))
                 else:
                     sql = 'SELECT btext from %s where book=%d '\
                           'and chapter=%d and verse between %d and %d'%\
@@ -348,29 +392,30 @@ def xref_to_html(path, file, xref, wtt_map, map_table, db_list, msg):
     html_table = HTML.Table(header_row=head)
     
     for x in xref:
-        e = bwxreflib.table["%02d"%x.book]
+        b_name = bwxreflib.table["%02d"%x.book]
         if x.v2 is 0:
-            html_row = ['%s %d:%d'%(e[2], x.chap, x.v1)]
+            html_row = ['%s %d:%d'%(b_name[2], x.chap, x.v1)]
         else:
-            html_row = ['%s %d:%d-%d\n'%(e[2], x.chap, x.v1, x.v2)]
+            html_row = ['%s %d:%d-%d\n'%(b_name[2], x.chap, x.v1, x.v2)]
 
         for col, (key, db_file) in enumerate(db_list.items()):
             db_file = db_list[key]
             try:
-                msg.appendPlainText('... Open DB %s'%db_file)
+                #msg.appendPlainText('... Open DB %s'%db_file)
                 db_con = db.connect(db_file)
                 db_cur = db_con.cursor()
                 table  = db_cur.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
                 db_tbl = table[0][0]
                 #msg.appendPlainText(db_tbl)
             except Exception as e:
-                e_str = str(e)
-                msg.appendPlainText('... DB Error => %s'%e_str)
+                e_str = "... Error: can't open %s\n... => %s"%(db_file, str(e))
+                msg.appendPlainText(e_str)
                 bwxrefcom.message_box(bwxrefcom.message_error, e_str)
                 return
-
+            
             if x.v2 is 0:
-                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_wtt_map_key_nau(): 
+
+                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_map_key_nau(): 
                     chap, vers, m_msg = get_wtt(map_table[1], x.book, x.chap, x.v1)
                 else:
                     chap, vers, m_msg = x.chap, x.v1, ''
@@ -378,22 +423,43 @@ def xref_to_html(path, file, xref, wtt_map, map_table, db_list, msg):
                       'and chapter=%d and verse=%d'%\
                       (db_tbl, x.book, chap, vers)
                       #(db_tbl, x.book, x.chap, x.v1)
-                      
-                v_cur = db_cur.execute(sql)
-                html_row.append('%d. %s%s'%(x.v1, v_cur.fetchone()[0], m_msg))
+                v_text = 'Not found'
+                try:
+                    v_cur = db_cur.execute(sql)
+                    v_temp = v_cur.fetchone()[0]
+                except Exception as e:
+                    e_str = "... Error %s(%d) %d:%d not found"%(b_name[2], x.book, x.chap, x.v1)
+                    msg.appendPlainText(e_str)
+                    bwxrefcom.message_box(bwxrefcom.message_warning, e_str)
+                    continue
+                if v_temp != '': v_text = v_temp
+                html_row.append('%d. %s%s'%(x.v1, v_text, m_msg))
                 #for vtext in db_cur.execute(sql):
                 #    html_row.append('%d. %s%s'%(x.v1, vtext[0], m_msg))
             else:
                 v_list = [vv for vv in range(x.v1, x.v2+1)]
-                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_wtt_map_key_nau(): 
+                if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_map_key_nau(): 
                     vl = []
                     for vv in v_list:
                         chap, vers, m_msg = get_wtt(map_table[1], x.book, x.chap, vv)
                         sql = 'SELECT btext from %s where book=%d '\
                               'and chapter=%d and verse=%d'%\
                               (db_tbl, x.book, chap, vv)
-                        v_cur = db_cur.execute(sql)
-                        vl.append('<p>%d. %s%s</p>'%(vv, v_cur.fetchone()[0], m_msg))
+                        #v_cur = db_cur.execute(sql)
+                        #vl.append('<p>%d. %s%s</p>'%(vv, v_cur.fetchone()[0], m_msg))
+                        v_text = 'Not found'
+                        try:
+                            v_cur = db_cur.execute(sql)
+                            v_temp = v_cur.fetchone()[0]
+                        except Exception as e:
+                            e_str = "... Error %s(%d) %d:%d not found"%(b_name[2], x.book, x.chap, x.v1)
+                            msg.appendPlainText(e_str)
+                            bwxrefcom.message_box(bwxrefcom.message_warning, e_str)
+                            #continue
+                        #v_text = v_temp
+                        #vl.append('<p>%d. %s%s</p>'%(vv, v_cur.fetchone()[0], m_msg))
+                        if v_temp != '': v_text = v_temp
+                        vl.append('<p>%d. %s%s</p>'%(vv, v_text, m_msg))
                         #for vtext in db_cur.execute(sql):
                         #    vl.append('<p>%d. %s%s</p>'%(vv, vtext[0], m_msg))
                 else:
@@ -406,7 +472,7 @@ def xref_to_html(path, file, xref, wtt_map, map_table, db_list, msg):
                         vl.append('<p>%d. %s</p>'%(vi, v_cur.fetchone()[0]))
                 html_row.append(''.join(vl))
             db_con.close()
-            msg.appendPlainText('... Close DB')
+            #msg.appendPlainText('... Close DB')
         html_table.rows.append(html_row)
 
     fo.write(str(html_table))

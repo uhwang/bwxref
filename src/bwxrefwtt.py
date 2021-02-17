@@ -4,25 +4,25 @@
 import re
 import bwxreflib
 
-import wtt_map_nau
-import wtt_map_bgm
-import wtt_map_bgt
-import wtt_map_wtt
+import map_nau_to_wtt
+import map_bgm_to_wtt
+import map_bgt_to_wtt
+import map_wtt_to_nau
 
 wtt_map_languages = ['English', 'Greek', 'Hebrew']
 
 wtt_map_key = ['NAU', 'BGM', 'BGT', 'WTT']
 
-def get_wtt_map_key_nau(): return wtt_map_key[0]
-def get_wtt_map_key_bgm(): return wtt_map_key[1]
-def get_wtt_map_key_bgt(): return wtt_map_key[2]
-def get_wtt_map_key_wtt(): return wtt_map_key[3]
+def get_map_key_nau(): return wtt_map_key[0]
+def get_map_key_bgm(): return wtt_map_key[1]
+def get_map_key_bgt(): return wtt_map_key[2]
+def get_map_key_wtt(): return wtt_map_key[3]
 
 wtt_map_version = {
-    wtt_map_key[0] : wtt_map_nau.table,
-    wtt_map_key[1] : wtt_map_bgm.table,
-    wtt_map_key[2] : wtt_map_bgt.table,
-    wtt_map_key[3] : wtt_map_wtt.table
+    wtt_map_key[0] : map_nau_to_wtt.table,
+    wtt_map_key[1] : map_bgm_to_wtt.table,
+    wtt_map_key[2] : map_bgt_to_wtt.table,
+    wtt_map_key[3] : map_wtt_to_nau.table
 } 
 
 def get_wtt_map_version(key):

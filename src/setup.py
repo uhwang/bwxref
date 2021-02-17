@@ -29,5 +29,11 @@ setup(
     #data_files = [("kbible_path.txt")],
 	#windows=[{"script": 'bwxref_gui.py', "icon_resources": [(0, "bwxref.ico")]}], 
 	windows=[{"script": 'bwxref_gui.py', "icon_resources": [(0, "bwxref.ico")],"dest_base": "XRef"}], 
-	options={'py2exe': {"dist_dir": "XRef", "includes" : ["sip", "PyQt4"], "excludes":["TKinter"]}} 
+	options={ "py2exe": 
+                { 
+                    "dist_dir": "XRef", 
+                    "includes": ['lxml.etree', 'lxml._elementpath', 'gzip', 'docx', 'sip', 'PyQt4'], 
+                    "excludes": ["TKinter"]
+                }
+            } 
 )
