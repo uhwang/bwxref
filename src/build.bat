@@ -1,5 +1,4 @@
-del .\XRef\Xref.exe
-del .\XRef\library.zip
+del /Q .\XRef\.
 
 python setup.py build
 
@@ -9,5 +8,4 @@ copy /y ebible_list.txt .\XRef
 copy /y ebible_path.txt .\XRef
 
 copy /y default.docx .\XRef
-copy /y default-settings.xml .\XRef
 

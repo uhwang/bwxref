@@ -331,11 +331,27 @@ class XRefConvert(QtGui.QWidget):
             self.connect(select[bn], QtCore.SIGNAL('clicked()'), self.select_source_path)
             
             ii = i+1
-            grid.addWidget(QtGui.QLabel(bn)      , ii,0)
+            grid.addWidget(QtGui.QLabel(bn) , ii,0)
             grid.addWidget(file[bn]  , ii,1)
             grid.addWidget(path[bn]  , ii,2)
             grid.addWidget(select[bn], ii,3)
-          
+
+        # add hebrew and greek 
+        if key == _english_bible_key:
+            ii = i+1
+            bn = bwxref.hgbible_list[0]
+            file  [bn] = QtGui.QLineEdit()
+            path  [bn] = QtGui.QLineEdit()
+            select[bn] = QKeyButton(bn)
+            select[bn].setIcon(QtGui.QIcon(QtGui.QPixmap(icon_folder_open.table)))
+            select[bn].setIconSize(QtCore.QSize(16,16))
+            self.connect(select[bn], QtCore.SIGNAL('clicked()'), self.select_source_path)
+            
+            grid.addWidget(QtGui.QLabel(bn), ii,0)
+            grid.addWidget(file[bn]  , ii,1)
+            grid.addWidget(path[bn]  , ii,2)
+            grid.addWidget(select[bn], ii,3)
+
         # minimize vertical spacing
         grid.setContentsMargins(0,0,0,0)
         grid.setSpacing(0)
@@ -401,7 +417,7 @@ class XRefConvert(QtGui.QWidget):
             checker = QtGui.QCheckBox(hgbib, self)
             checker.setChecked(hgcheck_list[hgbib])
             self.hgbible_checker[hgbib] = checker
-            checker.setEnabled(False)
+            #checker.setEnabled(True)
             col = i % ncol
             row = row+1 if i is not 0 and i%ncol is 0 else row
             hgbib_layout.addWidget(self.hgbible_checker[hgbib], row, col)
@@ -553,6 +569,7 @@ class XRefConvert(QtGui.QWidget):
     def confirm_db_check(self):
         kcheck_list = bwxref.get_kbible_check_list()
         echeck_list = bwxref.get_ebible_check_list()
+        hgcheck_list = bwxref.get_hgbible_check_list()
         self.db_list = {}
 
         for key, checker in self.kbible_checker.items():
@@ -567,6 +584,11 @@ class XRefConvert(QtGui.QWidget):
                 self.db_list[key] = os.path.join(self.ebible_path[key].text(), 
                                                 self.ebible_file[key].text())
         
+        for key, checker in self.hgbible_checker.items():
+            hgcheck_list[key] = checker.isChecked()
+            if hgcheck_list[key] is True:
+                self.db_list[key] = os.path.join(self.ebible_path[key].text(), 
+                                                self.ebible_file[key].text())
     def get_output_file(self):
         return os.path.join(self.xref_output_path.text(), self.xref_output.text())
         

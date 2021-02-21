@@ -1,4 +1,4 @@
-12
+13
 ESV,c:/己版DB,ESV.bdb
 GNT,c:/己版DB,GNT.bdb
 HCSB,c:/己版DB,HCSB.bdb
@@ -11,3 +11,4 @@ NKJV,c:/己版DB,NKJV.bdb
 NLT,c:/己版DB,NLT.bdb
 NRSV,c:/己版DB,NRSV.bdb
 YLT,c:/己版DB,YLT.bdb
+HebGrk,c:/己版DB,BHSSBL.bdb

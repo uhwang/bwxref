@@ -21,7 +21,6 @@ import HTML
 import bwxreflib
 import bwxrefwtt
 import bwxrefcom
-import wttmap as wmap
  
 write_format = ['Txt', 'Docx', 'Html']
 
@@ -50,10 +49,10 @@ class xref_elem:
 xref_list = []
 kbible_list = []
 ebible_list = []
-hgbible_list = ["Hebrew", "Greek"]
+hgbible_list = ["HebGrk"]
 kbible_check_list = {}
 ebible_check_list = {}
-hgbible_check_list = {hgbible_list[0]:False, hgbible_list[1]:False}
+hgbible_check_list = {hgbible_list[0]:False}
 
 wtt_to_nau = bwxrefwtt.get_wtt_map_version(bwxrefwtt.get_map_key_wtt())
 
