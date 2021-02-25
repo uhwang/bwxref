@@ -181,7 +181,7 @@ def xref_to_txt(path, file, xref, wtt_map, map_table, db_list, msg):
         return
     
     for x in xref:
-        e = bwxreflib.table["%02d"%x.book]
+        b_name = bwxreflib.table["%02d"%x.book]
         for key in db_list.keys():
             db_file = db_list[key]
             try:
@@ -208,7 +208,7 @@ def xref_to_txt(path, file, xref, wtt_map, map_table, db_list, msg):
                       (db_tbl, x.book, chap, vers)
                       #(db_tbl, x.book, x.chap, x.v1)
                       
-                fo.write('%s %d:%d\n'%(e[2], x.chap, x.v1))
+                fo.write('%s %d:%d\n'%(b_name[2], x.chap, x.v1))
                 
                 v_text = 'Not found'
                 try:
@@ -246,7 +246,7 @@ def xref_to_txt(path, file, xref, wtt_map, map_table, db_list, msg):
                         'and chapter=%d and verse between %d and %d'%\
                         (db_tbl, x.book, x.chap, x.v1, x.v2)
                       
-                    fo.write('%s %d:%d-%d\n'%(e[2], x.chap, x.v1, x.v2))
+                    fo.write('%s %d:%d-%d\n'%(b_name[2], x.chap, x.v1, x.v2))
                     v_cur = db_cur.execute(sql)
                     for vi in v_list:
                         fo.write('%d. %s\n'%(x.v1+vi, v_cur.fetchone()[0]))
@@ -304,13 +304,13 @@ def xref_to_docx(path, file, xref, wtt_map, map_table, db_list, msg):
             #table.rows[irow].cells[0]._tc.tcPr.tcW.type = 'auto'
             #table.rows[irow].cells[0]._tc.tcPr.tcW.w = 0
         
-            e = bwxreflib.table["%02d"%x.book]
+            b_name = bwxreflib.table["%02d"%x.book]
             #table.rows[0].cells[icol].text = '%s %d:%d'%(e[2], x.chap, x.v1) if x.v2 == 0 else\
             #                                 '%s %d:%d-d%'%(e[2], x.chap, x.v1, x.v2)
             if x.v2 == 0:
-                table.rows[irow].cells[0].text = '%s %d:%d'%(e[2], x.chap, x.v1)
+                table.rows[irow].cells[0].text = '%s %d:%d'%(b_name[2], x.chap, x.v1)
             else:
-                table.rows[irow].cells[0].text = '%s %d:%d-%d'%(e[2], x.chap, x.v1, x.v2)          
+                table.rows[irow].cells[0].text = '%s %d:%d-%d'%(b_name[2], x.chap, x.v1, x.v2)          
             
             if x.v2 is 0:
                 if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_map_key_nau(): 
