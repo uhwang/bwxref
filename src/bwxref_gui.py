@@ -4,8 +4,7 @@
     2/3/21  Ver 0.1
     2/4/21  Added BibleWorks Export 
     2/11/21 WTT Mapping
-    mportError: (cannot import name _elementpath) 'C:\\Users\\ul20a\\OneDrive - Southwestern Baptist Theological Seminary\\Python\\bwxref\\XRef\\lxml.etree.pyd'
-Traceback (most recent call last):
+    ImportError: (cannot import name _elementpath) 'C:\\Users\\ul20a\\...\\Python\\bwxref\\XRef\\lxml.etree.pyd'
 
     English Bible
     
