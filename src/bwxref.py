@@ -38,6 +38,10 @@ _xref_ebible_listfile = "ebible_list.txt"
 #_find_bwverse = re.compile('(.*)(?<=\s)(\d*):(\d*[-\d*]*)([,\s*\d*a-z]*)(?<=\s)')
 _find_bwverse = re.compile('(.*)(?<=\s)(\d*):(\d*[-\d*]*)([,\da-z]*)')
     
+def is_access_denied(e_str):
+    key = ["access", "denied", "used", "another", "permission"]
+    return any(x in e_str.lower() for x in key)
+    
 class xref_elem:
     def __init__(self, book=None, chap=None, v1=0, v2=0):
         self.book = book
@@ -178,7 +182,7 @@ def xref_to_txt(path, file, xref, wtt_map, map_table, db_list, msg):
         e_str = str(e)
         msg.appendPlainText('... Error(xref_to_txt) ==> %s'%e_str)
         bwxrefcom.message_box(bwxrefcom.message_error, e_str)
-        return
+        return False
     
     for x in xref:
         b_name = bwxreflib.table["%02d"%x.book]
@@ -195,7 +199,7 @@ def xref_to_txt(path, file, xref, wtt_map, map_table, db_list, msg):
                 e_str = str(e)
                 msg.appendPlainText('... DB Error => %s'%e_str)
                 bwxrefcom.message_box(bwxrefcom.message_error, e_str)
-                return
+                return False
             
             if x.v2 is 0:
                 if wtt_map and x.book <= 39 and map_table[0] != bwxrefwtt.get_map_key_nau(): 
@@ -257,6 +261,7 @@ def xref_to_txt(path, file, xref, wtt_map, map_table, db_list, msg):
     
     msg.appendPlainText('... Success')
     bwxrefcom.message_box(bwxrefcom.message_normal, 'Success')
+    return True
 
 def xref_to_docx(path, file, xref, wtt_map, map_table, db_list, msg):
     from docx import Document
@@ -273,7 +278,7 @@ def xref_to_docx(path, file, xref, wtt_map, map_table, db_list, msg):
         e_str = "... Error(xref_to_docx): Can't create Word Document.\n%s"%str(e)
         msg.appendPlainText(e_str)
         bwxrefcom.message_box(bwxrefcom.message_error, e_str)
-        return
+        return False
         
     rows = len(xref)+1
     cols = ndb+1
@@ -366,12 +371,15 @@ def xref_to_docx(path, file, xref, wtt_map, map_table, db_list, msg):
         document.save(os.path.join(path,file))
     except Exception as e:
         e_str = str(e)
+        if is_access_denied(e_str):
+            e_str += "\n%s is already opened!"%file
         msg.appendPlainText('... Error(xref_to_docx) ==> %s'%e_str)
         bwxrefcom.message_box(bwxrefcom.message_error, e_str)
-        return
+        return False
         
     msg.appendPlainText('... success')
     bwxrefcom.message_box(bwxrefcom.message_normal, 'Success')
+    return True
 
 # map_table is a tuple (key, map_dictionary)
 
@@ -381,10 +389,12 @@ def xref_to_html(path, file, xref, wtt_map, map_table, db_list, msg):
     try:
         fo = open(os.path.join(path, file), mode='wt', encoding='utf8')
     except Exception as e:
-        e_str = str(e)
-        msg.appendPlainText('... Error ==> %s'%e_str)
+        e_str = "... Error(xref_to_html): Fail to create HTML file\n(%s)"%str(e)
+        if is_access_denied(e_str):
+            e_str += "%s is already opened!"%file
+        msg.appendPlainText(e_str)
         bwxrefcom.message_box(bwxrefcom.message_error, e_str)
-        return
+        return False
     
     head = [key for key in db_list.keys()]
     head.insert(0, ' ')
@@ -410,7 +420,7 @@ def xref_to_html(path, file, xref, wtt_map, map_table, db_list, msg):
                 e_str = "... Error: can't open %s\n... => %s"%(db_file, str(e))
                 msg.appendPlainText(e_str)
                 bwxrefcom.message_box(bwxrefcom.message_error, e_str)
-                return
+                return False
             
             if x.v2 is 0:
 
@@ -477,6 +487,7 @@ def xref_to_html(path, file, xref, wtt_map, map_table, db_list, msg):
     fo.write(str(html_table))
     msg.appendPlainText('... Success')
     bwxrefcom.message_box(bwxrefcom.message_normal, 'Success')
+    return True
     
 write_xref = { 
     write_format[0] : xref_to_txt,  
@@ -564,7 +575,8 @@ def xref_to_kor(path,
         bwxrefcom.message_box(bwxrefcom.message_warning, e_str)
         return
         
-    write_xref[fmt](path, file, xref_list, wtt_map, map_table, db_list, msg)
+    if write_xref[fmt](path, file, xref_list, wtt_map, map_table, db_list, msg) == False:
+        return
     
     if non_canon_book: 
         bwxrefcom.message_box(bwxrefcom.message_normal, "Check the message")
