@@ -38,7 +38,7 @@ _xref_ebible_listfile = "ebible_list.txt"
 #_find_bwverse = re.compile('(.*)(?<=\s)(\d*):(\d*[-\d*]*)([,\s*\d*a-z]*)(?<=\s)')
 _find_bwverse = re.compile('(.*)(?<=\s)(\d*):(\d*[-\d*]*)([,\da-z]*)')
     
-def is_access_denied(e_str):
+def access_denied(e_str):
     key = ["access", "denied", "used", "another", "permission"]
     return any(x in e_str.lower() for x in key)
     
@@ -371,7 +371,7 @@ def xref_to_docx(path, file, xref, wtt_map, map_table, db_list, msg):
         document.save(os.path.join(path,file))
     except Exception as e:
         e_str = str(e)
-        if is_access_denied(e_str):
+        if access_denied(e_str):
             e_str += "\n%s is already opened!"%file
         msg.appendPlainText('... Error(xref_to_docx) ==> %s'%e_str)
         bwxrefcom.message_box(bwxrefcom.message_error, e_str)
@@ -390,7 +390,7 @@ def xref_to_html(path, file, xref, wtt_map, map_table, db_list, msg):
         fo = open(os.path.join(path, file), mode='wt', encoding='utf8')
     except Exception as e:
         e_str = "... Error(xref_to_html): Fail to create HTML file\n(%s)"%str(e)
-        if is_access_denied(e_str):
+        if access_denied(e_str):
             e_str += "%s is already opened!"%file
         msg.appendPlainText(e_str)
         bwxrefcom.message_box(bwxrefcom.message_error, e_str)
